@@ -9,6 +9,7 @@
 ## Запуск
 
 ```
+tripgoctl cluster start
 tripgoctl environment start
 make migrate
 make run
