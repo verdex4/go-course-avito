@@ -21,7 +21,7 @@ migrate:
 # Откат миграций PostgreSQL
 migrate-down:
 	@echo "Rolling back database migrations..."
-	go tool goose -dir migrations postgres "$(DATABASE_URL)" down
+	go tool goose -dir migrations postgres "$(DATABASE_URL)" down-to 0
 
 # Запуск сервиса
 run:
