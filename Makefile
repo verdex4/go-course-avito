@@ -26,7 +26,7 @@ migrate-down:
 # Запуск сервиса
 run:
 	@echo "Running service..."
-	go run ./cmd/trip-service
+	go run ./cmd/service
 
 # Запуск тестов
 test:

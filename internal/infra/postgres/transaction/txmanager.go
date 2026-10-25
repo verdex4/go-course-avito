@@ -1,4 +1,4 @@
-package txmanager
+package transaction
 
 import (
 	"context"
@@ -21,7 +21,7 @@ type manager struct {
 	pool *pgxpool.Pool
 }
 
-func NewTxManager(pool *pgxpool.Pool) TxManager {
+func New(pool *pgxpool.Pool) TxManager {
 	return &manager{pool: pool}
 }
 
