@@ -1,44 +1,99 @@
-# TripGo — репозиторий для лабораторных работ
+# Лабораторная работа 2
 
-Заготовка курса «Разработка микросервисов на Go». Здесь вы делаете все пять
-работ: каждая следующая продолжает предыдущую, переписывать сервис с нуля не
-нужно.
+## Зависимости
 
-## Что делать сразу
+- tripgoctl: ```curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL https://github.com/course-go-autumn-2026/course-infra/releases/latest/download/install-tripgoctl | sh```
+- make + компиляторы C++ для работы тестов (в пакете уже есть make): ```sudo apt update && sudo apt install build-essential``` (linux)
+- генератор заглушек (mocks) для тестов: ```go install go.uber.org/mock/mockgen@latest``` (linux)
 
-1. **Fork** этого репозитория к себе. Форк нужен, чтобы преподаватели видели
-   список всех работ курса одной страницей.
-2. Заведите модуль:
+## Запуск
 
-```bash
-git clone git@github.com:<ваш-логин>/<ваш-репозиторий>.git
-cd <ваш-репозиторий>
-go mod init github.com/<ваш-логин>/<ваш-репозиторий>
+```
+tripgoctl cluster start
+tripgoctl environment start
+make migrate
+make run
 ```
 
-Путь модуля потом не меняется — иначе придётся править все импорты. Проще всего
-взять адрес своего репозитория, каким бы он ни был.
+Для запуска тестов
+```
+make test
+make integration-test
+```
 
-Дальше — [`homework/docs/getting-started.md`](https://github.com/course-go-autumn-2026/course/blob/main/homework/docs/getting-started.md)
-в репозитории курса: инструменты, окружение, миграции, вид сданной работы.
+Для подключения к Jaeger и Grafana
+```
+tripgoctl connect
+```
 
-## Где что лежит
+## Переменные окружения
 
-| Что | Где |
-|---|---|
-| Задания, документация, контракты | [`course-go-autumn-2026/course`](https://github.com/course-go-autumn-2026/course) |
-| Слайды и записи лекций | [`lections/`](https://github.com/course-go-autumn-2026/course/tree/main/lections) |
-| Как оценивают, дедлайны, порядок сдачи | [`homework/docs/grading.md`](https://github.com/course-go-autumn-2026/course/blob/main/homework/docs/grading.md) |
-| Локальное окружение и утилита `tripgoctl` | [`course-go-autumn-2026/course-infra`](https://github.com/course-go-autumn-2026/course-infra) |
+tripgoctl по умолчанию создает переменные окружения сам, согласно environment.toml, поэтому файл .env не нужно редактировать. В нем есть следующие переменные:
+- HTTP_ADDR
+- LOG_LEVEL
+- SHUTDOWN_TIMEOUT
+- DATABASE_URL
+- DATABASE_MAX_CONNS
+- DATABASE_MIN_CONNS
+- DATABASE_MAX_CONN_LIFETIME
+- DATABASE_CONNECT_TIMEOUT
+- DATABASE_QUERY_TIMEOUT
+- OTEL_SERVICE_NAME
+- OTEL_EXPORTER_OTLP_ENDPOINT
+- OTEL_EXPORTER_OTLP_PROTOCOL
+- OTEL_RESOURCE_ATTRIBUTES
+- OTEL_TRACES_SAMPLER
 
-Задания появляются по мере курса, каждое — после своей пары лекций.
+## Схема слоев
 
-## Как сдавать
+```
+cmd/service/main.go          // точка входа
+      ↓
+internal/container           // собирает все зависимости в одном месте
+      ↓
+internal/http/trip/*         // HTTP-обработчики
+      ↓
+internal/usecase/trip/*      // бизнес-логика
+      ↓
+internal/domain/trip         // доменные ошибки и переходы состояний
+      ↓
+internal/model               // структуры данных, передаваемые между слоями
+      ↓
+internal/repository/trip     // работа с базой данных
+      ↓
+internal/infra/postgres      // пул соединений, менеджер транзакций
+internal/infra/telemetry     // OpenTelemetry, логгер
+```
 
-Ветка `homework/NN` от `main`, pull request в `main` своего форка, ССЫЛКУ НИКУДА СКИДЫВАТЬ НЕ НУЖНО, ревьюер сам найдет ее внутри вашего форка. Подробно — в `grading.md` репозитория курса.
+## Зависимости
 
-## Чужие работы
+Цепочка: транспорт → usecase → домен
 
-Форки видны всем, включая ваши. Смотреть чужие решения, пока идёт курс, —
-плохая идея: одинаковый код виден сразу, а разбираться на защите придётся
-самому.
+Домен не знает ни про HTTP, ни про базу данных.
+Интерфейсы (TripRepository, TxManager) объявлены на стороне потребителя - в пакете usecase, а не в repository. Это значит, что usecase сам говорит, что ему нужно, а реализация может быть любой.
+
+## Решения
+
+1. Обработка ошибок: все доменные ошибки объявлены в internal/domain/trip/errors.go. Маппинг "доменная ошибка: HTTP-ответ" сделан в одном месте - internal/http/domainerror/domainerror.go. Хендлеры не делают switch по ошибкам, они просто вызывают domainerror.Problem(err).
+Детали внутренних ошибок только логируются через slog.
+2. Тестирование: для usecase и http-хэндлеров написаны Unit-тесты, при помощи gomock (автогенерация моков для теста), что позволяет не обращается к реальной базе данных.
+Интеграционные тесты - уже с использованием БД, проверка корректности ее работы. Тесты домена и middleware без моков.
+3. Observability: otelhttp middleware создаёт корневой спан на каждый HTTP-запрос, otelpgx создаёт спаны на запросы к БД. Все спаны одного запроса имеют общий trace_id.
+Созданы кастомные счётчики tripgo.trips.created и tripgo.trips.completed, которые можно отследить в Jaeger и Grafana.
+
+## Скриншоты из Jaeger и Grafana
+
+Список трейсов:
+![](plots/jaeger_main.png)
+
+Таймлайн запроса на завершение поездки:
+![](plots/jaeger_finish_trace_timeline.png)
+
+Граф запроса на завершение поездки:
+![](plots/jaeger_finish_trace_graph.png)
+
+Кастомная метрика в Grafana trips_created_total:
+![](plots/grafana_trips_created_total.png)
+
+Кастомная метрика в Grafana trips_completed_total:
+![](plots/grafana_trips_completed_total.png)
