@@ -83,8 +83,17 @@ internal/infra/telemetry     // OpenTelemetry, логгер
 
 ## Скриншоты из Jaeger и Grafana
 
-1. ![Список трейсов](plots/jaeger_main.png)
-2. ![Таймлайн запроса на завершение поездки](plots/jaeger_finish_trace_timeline.png)
-3. ![Граф запроса на завершение поездки](plots/jaeger_finish_trace_graph.png)
-4. ![Кастомная метрика в Grafana: trips_created_total](plots/grafana_trips_created_total.png)
-5. ![Кастомная метрика в Grafana: trips_completed_total](plots/grafana_trips_completed_total.png)
+Список трейсов:
+![](plots/jaeger_main.png)
+
+Таймлайн запроса на завершение поездки:
+![](plots/jaeger_finish_trace_timeline.png)
+
+Граф запроса на завершение поездки:
+![](plots/jaeger_finish_trace_graph.png)
+
+Кастомная метрика в Grafana trips_created_total:
+![](plots/grafana_trips_created_total.png)
+
+Кастомная метрика в Grafana trips_completed_total:
+![](plots/grafana_trips_completed_total.png)
