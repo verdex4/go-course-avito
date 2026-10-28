@@ -18,6 +18,10 @@ type Config struct {
 	DatabaseMaxConnLifetime time.Duration
 	DatabaseConnectTimeout  time.Duration
 	DatabaseQueryTimeout    time.Duration
+
+	OtelEndpoint      string
+	OtelProtocol      string
+	OtelTracesSampler string
 }
 
 func Load() (*Config, error) {
@@ -76,6 +80,24 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid DATABASE_MAX_CONN_LIFETIME: %w", err)
 	}
 	cfg.DatabaseMaxConnLifetime = maxConnLifetime
+
+	otelEndpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	if otelEndpoint == "" {
+		return nil, fmt.Errorf("OTEL_EXPORTER_OTLP_ENDPOINT is required")
+	}
+	cfg.OtelEndpoint = otelEndpoint
+
+	otelProtocol := os.Getenv("OTEL_EXPORTER_OTLP_PROTOCOL")
+	if otelProtocol == "" {
+		return nil, fmt.Errorf("OTEL_EXPORTER_OTLP_PROTOCOL is required")
+	}
+	cfg.OtelProtocol = otelProtocol
+
+	otelTracesSampler := os.Getenv("OTEL_TRACES_SAMPLER")
+	if otelTracesSampler == "" {
+		return nil, fmt.Errorf("OTEL_TRACES_SAMPLER is required")
+	}
+	cfg.OtelTracesSampler = otelTracesSampler
 
 	return cfg, nil
 }

@@ -10,7 +10,6 @@ type repo struct {
 	sb   squirrel.StatementBuilderType
 }
 
-// New создаёт репозиторий поездок.
 func New(pool *pgxpool.Pool) TripRepository {
 	return &repo{
 		pool: pool,

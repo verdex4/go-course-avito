@@ -25,5 +25,9 @@ func (uc *UseCase) Execute(ctx context.Context, id uuid.UUID) (*model.Trip, erro
 		return nil, fmt.Errorf("finish trip: %w", err)
 	}
 
+	if result != nil {
+		uc.metrics.AddTripFinished(ctx, 1)
+	}
+
 	return result, nil
 }

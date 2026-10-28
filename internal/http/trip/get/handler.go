@@ -2,6 +2,7 @@ package get
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	api "github.com/verdex4/go-course-avito/internal/generated"
@@ -9,11 +10,12 @@ import (
 )
 
 type Handler struct {
-	uc tripUseCase
+	uc     tripUseCase
+	logger *slog.Logger
 }
 
-func New(uc tripUseCase) *Handler {
-	return &Handler{uc: uc}
+func New(uc tripUseCase, logger *slog.Logger) *Handler {
+	return &Handler{uc: uc, logger: logger}
 }
 
 // GET /api/v1/trips/{tripId}
@@ -24,6 +26,8 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request, tripId api.Trip
 		writeProblem(w, status, body)
 		return
 	}
+
+	h.logger.Info("trip found", "trip_id", trip.ID.String())
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

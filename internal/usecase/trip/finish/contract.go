@@ -16,13 +16,17 @@ type (
 	txManager interface {
 		Do(ctx context.Context, fn func(ctx context.Context) error) error
 	}
+	metrics interface {
+		AddTripFinished(ctx context.Context, n int64)
+	}
 )
 
 type UseCase struct {
-	repo tripRepository
-	tx   txManager
+	repo    tripRepository
+	tx      txManager
+	metrics metrics
 }
 
-func New(repo tripRepository, tx txManager) *UseCase {
-	return &UseCase{repo: repo, tx: tx}
+func New(repo tripRepository, tx txManager, m metrics) *UseCase {
+	return &UseCase{repo: repo, tx: tx, metrics: m}
 }

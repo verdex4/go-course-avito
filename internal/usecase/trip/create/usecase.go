@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/verdex4/go-course-avito/internal/domain/trip"
 	"github.com/verdex4/go-course-avito/internal/model"
@@ -23,6 +24,8 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (*model.Trip, error) {
 		StartPoint: in.StartPoint,
 		EndPoint:   in.EndPoint,
 		Price:      in.Price,
+		Status:     model.TripStatusActive,
+		StartedAt:  time.Now().UTC(),
 	}
 
 	err := uc.tx.Do(ctx, func(ctx context.Context) error {
@@ -33,6 +36,10 @@ func (uc *UseCase) Execute(ctx context.Context, in Input) (*model.Trip, error) {
 			return nil, err
 		}
 		return nil, fmt.Errorf("save trip: %w", err)
+	}
+
+	if t != nil {
+		uc.metrics.AddTripCreated(ctx, 1)
 	}
 
 	return t, nil
