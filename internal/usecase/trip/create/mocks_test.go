@@ -13,6 +13,7 @@ import (
 	context "context"
 	reflect "reflect"
 
+	uuid "github.com/google/uuid"
 	model "github.com/verdex4/go-course-avito/internal/model"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -39,6 +40,21 @@ func NewMocktripRepository(ctrl *gomock.Controller) *MocktripRepository {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MocktripRepository) EXPECT() *MocktripRepositoryMockRecorder {
 	return m.recorder
+}
+
+// GetByIdempotencyKey mocks base method.
+func (m *MocktripRepository) GetByIdempotencyKey(ctx context.Context, key uuid.UUID) (*model.Trip, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByIdempotencyKey", ctx, key)
+	ret0, _ := ret[0].(*model.Trip)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByIdempotencyKey indicates an expected call of GetByIdempotencyKey.
+func (mr *MocktripRepositoryMockRecorder) GetByIdempotencyKey(ctx, key any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByIdempotencyKey", reflect.TypeOf((*MocktripRepository)(nil).GetByIdempotencyKey), ctx, key)
 }
 
 // Save mocks base method.

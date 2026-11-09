@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/squirrel"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+
 	"github.com/verdex4/go-course-avito/internal/domain/trip"
 	"github.com/verdex4/go-course-avito/internal/infra/postgres/transaction"
 	"github.com/verdex4/go-course-avito/internal/model"
@@ -22,7 +23,7 @@ func (r *repo) Get(ctx context.Context, id uuid.UUID) (*model.Trip, error) {
 		"start_latitude", "start_longitude",
 		"end_latitude", "end_longitude",
 		"price", "status", "started_at", "finished_at",
-		"created_at", "updated_at",
+		"created_at", "updated_at", "idempotency_key",
 	).
 		From("trips").
 		Where(squirrel.Eq{"id": id}).
@@ -33,12 +34,14 @@ func (r *repo) Get(ctx context.Context, id uuid.UUID) (*model.Trip, error) {
 
 	var t model.Trip
 	var status string
+	var idempotencyKey *uuid.UUID
+
 	err = exec.QueryRow(ctx, query, args...).Scan(
 		&t.ID, &t.UserID, &t.DriverID,
 		&t.StartPoint.Latitude, &t.StartPoint.Longitude,
 		&t.EndPoint.Latitude, &t.EndPoint.Longitude,
 		&t.Price, &status, &t.StartedAt, &t.FinishedAt,
-		&t.CreatedAt, &t.UpdatedAt,
+		&t.CreatedAt, &t.UpdatedAt, &idempotencyKey,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -47,6 +50,50 @@ func (r *repo) Get(ctx context.Context, id uuid.UUID) (*model.Trip, error) {
 		return nil, fmt.Errorf("select trip: %w", err)
 	}
 	t.Status = model.TripStatus(status)
+	t.IdempotencyKey = idempotencyKey
+
+	return &t, nil
+}
+
+func (r *repo) GetByIdempotencyKey(ctx context.Context, key uuid.UUID) (*model.Trip, error) {
+	exec := transaction.GetExecutor(ctx, r.pool)
+
+	query, args, err := r.sb.Select(
+		"id", "user_id", "driver_id",
+		"start_latitude", "start_longitude",
+		"end_latitude", "end_longitude",
+		"price", "status", "started_at", "finished_at",
+		"created_at", "updated_at",
+		"idempotency_key",
+	).
+		From("trips").
+		Where(squirrel.Eq{"idempotency_key": key}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build select trip by idempotency key: %w", err)
+	}
+
+	var t model.Trip
+	var status string
+	var idempotencyKey *uuid.UUID
+
+	err = exec.QueryRow(ctx, query, args...).Scan(
+		&t.ID, &t.UserID, &t.DriverID,
+		&t.StartPoint.Latitude, &t.StartPoint.Longitude,
+		&t.EndPoint.Latitude, &t.EndPoint.Longitude,
+		&t.Price, &status, &t.StartedAt, &t.FinishedAt,
+		&t.CreatedAt, &t.UpdatedAt,
+		&idempotencyKey,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, trip.ErrTripNotFound
+		}
+		return nil, fmt.Errorf("select trip by idempotency key: %w", err)
+	}
+
+	t.Status = model.TripStatus(status)
+	t.IdempotencyKey = idempotencyKey
 
 	return &t, nil
 }

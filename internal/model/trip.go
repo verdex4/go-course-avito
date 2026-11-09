@@ -20,6 +20,7 @@ type Coordinates struct {
 
 type Trip struct {
 	ID             uuid.UUID
+	IdempotencyKey *uuid.UUID
 	UserID         uuid.UUID
 	DriverID       uuid.UUID
 	StartPoint     Coordinates

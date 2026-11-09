@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
 	"github.com/verdex4/go-course-avito/internal/model"
 )
 
@@ -11,7 +12,9 @@ import (
 
 type (
 	tripRepository interface {
-		Finish(ctx context.Context, id uuid.UUID) (*model.Trip, error)
+		Save(ctx context.Context, trip *model.Trip) error
+		Get(ctx context.Context, id uuid.UUID) (*model.Trip, error)
+		UpdateIfActive(ctx context.Context, trip *model.Trip) error
 	}
 	txManager interface {
 		Do(ctx context.Context, fn func(ctx context.Context) error) error

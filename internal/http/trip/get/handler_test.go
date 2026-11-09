@@ -10,11 +10,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/verdex4/go-course-avito/internal/domain/trip"
 	api "github.com/verdex4/go-course-avito/internal/generated"
 	"github.com/verdex4/go-course-avito/internal/http/trip/get"
 	"github.com/verdex4/go-course-avito/internal/model"
-	"go.uber.org/mock/gomock"
 )
 
 func TestHandler_Handle(t *testing.T) {
@@ -25,13 +26,13 @@ func TestHandler_Handle(t *testing.T) {
 	testLogger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	h := get.New(uc, testLogger)
 
-	tripID := api.TripId(uuid.New())
+	tripID := uuid.New()
 
 	t.Run("success: 200 OK", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/trips/"+tripID.String(), nil)
 		w := httptest.NewRecorder()
 
-		uc.EXPECT().Execute(gomock.Any(), tripID).Return(&model.Trip{ID: uuid.UUID(tripID), Status: model.TripStatusActive}, nil)
+		uc.EXPECT().Execute(gomock.Any(), tripID).Return(&model.Trip{ID: tripID, Status: model.TripStatusActive}, nil)
 
 		h.Handle(w, req, tripID)
 

@@ -13,8 +13,8 @@ type Config struct {
 	LogLevel        string
 	ShutdownTimeout time.Duration
 
-	DatabaseMaxConns        int
-	DatabaseMinConns        int
+	DatabaseMaxConns        int32
+	DatabaseMinConns        int32
 	DatabaseMaxConnLifetime time.Duration
 	DatabaseConnectTimeout  time.Duration
 	DatabaseQueryTimeout    time.Duration
@@ -51,13 +51,13 @@ func Load() (*Config, error) {
 	}
 	cfg.ShutdownTimeout = shutdownTimeout
 
-	maxConns, err := parseInt("DATABASE_MAX_CONNS", 10)
+	maxConns, err := parseInt32("DATABASE_MAX_CONNS", 10)
 	if err != nil {
 		return nil, fmt.Errorf("invalid DATABASE_MAX_CONNS: %w", err)
 	}
 	cfg.DatabaseMaxConns = maxConns
 
-	minConns, err := parseInt("DATABASE_MIN_CONNS", 2)
+	minConns, err := parseInt32("DATABASE_MIN_CONNS", 2)
 	if err != nil {
 		return nil, fmt.Errorf("invalid DATABASE_MIN_CONNS: %w", err)
 	}
@@ -110,10 +110,15 @@ func parseDuration(key, defaultValue string) (time.Duration, error) {
 	return time.ParseDuration(value)
 }
 
-func parseInt(key string, defaultValue int) (int, error) {
+func parseInt32(key string, defaultValue int32) (int32, error) {
 	value := os.Getenv(key)
 	if value == "" {
 		return defaultValue, nil
 	}
-	return strconv.Atoi(value)
+	res64, err := strconv.ParseInt(value, 10, 32)
+	if err != nil {
+		return defaultValue, err
+	}
+
+	return int32(res64), nil
 }

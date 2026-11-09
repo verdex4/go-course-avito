@@ -11,7 +11,17 @@ import (
 
 // Problem преобразует доменную ошибку в HTTP-статус и тело Problem
 func Problem(err error) (status int, body api.Problem) {
+	var validationErr *trip.ValidationError
+
 	switch {
+	case errors.As(err, &validationErr):
+		return http.StatusBadRequest, api.Problem{
+			Type:   "https://tripgo.example/problems/invalid-request",
+			Title:  "Invalid request",
+			Status: http.StatusBadRequest,
+			Detail: new(validationErr.Error()),
+			Code:   "invalid_request",
+		}
 	case errors.Is(err, trip.ErrTripNotFound):
 		return http.StatusNotFound, api.Problem{
 			Type:   "https://tripgo.example/problems/trip-not-found",
@@ -37,6 +47,14 @@ func Problem(err error) (status int, body api.Problem) {
 			Status: http.StatusConflict,
 			Detail: new("Driver already has an active trip"),
 			Code:   "driver_busy",
+		}
+	case errors.Is(err, trip.ErrIdempotencyConflict):
+		return http.StatusConflict, api.Problem{
+			Type:   "https://tripgo.example/problems/idempotency-conflict",
+			Title:  "Idempotency conflict",
+			Status: http.StatusConflict,
+			Detail: new("Idempotency-Key was already used with a different request body"),
+			Code:   "idempotency_conflict",
 		}
 
 	default:

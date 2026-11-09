@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
 	"github.com/verdex4/go-course-avito/internal/model"
 )
 
@@ -12,6 +13,7 @@ import (
 type (
 	tripRepository interface {
 		Save(ctx context.Context, trip *model.Trip) error
+		GetByIdempotencyKey(ctx context.Context, key uuid.UUID) (*model.Trip, error)
 	}
 	txManager interface {
 		Do(ctx context.Context, fn func(ctx context.Context) error) error
@@ -22,11 +24,12 @@ type (
 )
 
 type Input struct {
-	UserID     uuid.UUID
-	DriverID   uuid.UUID
-	StartPoint model.Coordinates
-	EndPoint   model.Coordinates
-	Price      int64
+	IdempotencyKey *uuid.UUID
+	UserID         uuid.UUID
+	DriverID       uuid.UUID
+	StartPoint     model.Coordinates
+	EndPoint       model.Coordinates
+	Price          int64
 }
 
 type UseCase struct {

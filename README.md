@@ -15,6 +15,11 @@ make migrate
 make run
 ```
 
+Проверка линтера
+```
+make lint
+```
+
 Для запуска тестов
 ```
 make test

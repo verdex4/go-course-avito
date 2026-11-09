@@ -12,11 +12,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/verdex4/go-course-avito/internal/domain/trip"
 	api "github.com/verdex4/go-course-avito/internal/generated"
 	"github.com/verdex4/go-course-avito/internal/http/trip/create"
 	"github.com/verdex4/go-course-avito/internal/model"
-	"go.uber.org/mock/gomock"
 )
 
 func TestHandler_Handle(t *testing.T) {
@@ -33,7 +34,7 @@ func TestHandler_Handle(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/trips", strings.NewReader(validBody))
 		w := httptest.NewRecorder()
 
-		uc.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(&model.Trip{ID: uuid.New(), Status: model.TripStatusActive}, nil)
+		uc.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(&model.Trip{ID: uuid.New(), Status: model.TripStatusActive}, true, nil)
 
 		h.Handle(w, req, api.CreateTripParams{})
 
@@ -51,7 +52,8 @@ func TestHandler_Handle(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 
 		var prob api.Problem
-		json.Unmarshal(w.Body.Bytes(), &prob)
+		err := json.Unmarshal(w.Body.Bytes(), &prob)
+		require.NoError(t, err)
 		require.Equal(t, "invalid_request", prob.Code)
 	})
 
@@ -59,13 +61,14 @@ func TestHandler_Handle(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/trips", strings.NewReader(validBody))
 		w := httptest.NewRecorder()
 
-		uc.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(nil, trip.ErrDriverBusy)
+		uc.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(nil, false, trip.ErrDriverBusy)
 
 		h.Handle(w, req, api.CreateTripParams{})
 
 		require.Equal(t, http.StatusConflict, w.Code)
 		var prob api.Problem
-		json.Unmarshal(w.Body.Bytes(), &prob)
+		err := json.Unmarshal(w.Body.Bytes(), &prob)
+		require.NoError(t, err)
 		require.Equal(t, "driver_busy", prob.Code)
 	})
 
@@ -73,13 +76,14 @@ func TestHandler_Handle(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/trips", strings.NewReader(validBody))
 		w := httptest.NewRecorder()
 
-		uc.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(nil, errors.New("pq: syntax error at or near"))
+		uc.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(nil, false, errors.New("pq: syntax error at or near"))
 
 		h.Handle(w, req, api.CreateTripParams{})
 
 		require.Equal(t, http.StatusInternalServerError, w.Code)
 		var prob api.Problem
-		json.Unmarshal(w.Body.Bytes(), &prob)
+		err := json.Unmarshal(w.Body.Bytes(), &prob)
+		require.NoError(t, err)
 		require.Equal(t, "internal_error", prob.Code)
 		// Проверяем, что детали SQL-ошибки не утекли в ответ
 		require.NotContains(t, w.Body.String(), "pq:")

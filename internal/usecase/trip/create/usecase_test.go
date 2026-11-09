@@ -6,10 +6,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/verdex4/go-course-avito/internal/domain/trip"
 	"github.com/verdex4/go-course-avito/internal/model"
 	"github.com/verdex4/go-course-avito/internal/usecase/trip/create"
-	"go.uber.org/mock/gomock"
 )
 
 func TestUseCase_Execute(t *testing.T) {
@@ -37,7 +38,7 @@ func TestUseCase_Execute(t *testing.T) {
 			return fn(ctx)
 		})
 
-		res, err := uc.Execute(ctx, validInput)
+		res, _, err := uc.Execute(ctx, validInput)
 
 		require.NoError(t, err)
 		require.NotNil(t, res)
@@ -50,7 +51,7 @@ func TestUseCase_Execute(t *testing.T) {
 			return fn(ctx)
 		})
 
-		res, err := uc.Execute(ctx, validInput)
+		res, _, err := uc.Execute(ctx, validInput)
 
 		require.ErrorIs(t, err, trip.ErrDriverBusy)
 		require.Nil(t, res)

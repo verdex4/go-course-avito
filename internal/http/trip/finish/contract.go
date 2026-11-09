@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
 	"github.com/verdex4/go-course-avito/internal/model"
 )
 

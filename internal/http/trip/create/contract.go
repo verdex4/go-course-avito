@@ -10,5 +10,5 @@ import (
 //go:generate mockgen -source ${GOFILE} -destination mocks_test.go -package ${GOPACKAGE}_test
 
 type tripUseCase interface {
-	Execute(ctx context.Context, in create.Input) (*model.Trip, error)
+	Execute(ctx context.Context, in create.Input) (*model.Trip, bool, error)
 }

@@ -42,19 +42,47 @@ func (m *MocktripRepository) EXPECT() *MocktripRepositoryMockRecorder {
 	return m.recorder
 }
 
-// Finish mocks base method.
-func (m *MocktripRepository) Finish(ctx context.Context, id uuid.UUID) (*model.Trip, error) {
+// Get mocks base method.
+func (m *MocktripRepository) Get(ctx context.Context, id uuid.UUID) (*model.Trip, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Finish", ctx, id)
+	ret := m.ctrl.Call(m, "Get", ctx, id)
 	ret0, _ := ret[0].(*model.Trip)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// Finish indicates an expected call of Finish.
-func (mr *MocktripRepositoryMockRecorder) Finish(ctx, id any) *gomock.Call {
+// Get indicates an expected call of Get.
+func (mr *MocktripRepositoryMockRecorder) Get(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Finish", reflect.TypeOf((*MocktripRepository)(nil).Finish), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MocktripRepository)(nil).Get), ctx, id)
+}
+
+// Save mocks base method.
+func (m *MocktripRepository) Save(ctx context.Context, trip *model.Trip) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Save", ctx, trip)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Save indicates an expected call of Save.
+func (mr *MocktripRepositoryMockRecorder) Save(ctx, trip any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MocktripRepository)(nil).Save), ctx, trip)
+}
+
+// UpdateIfActive mocks base method.
+func (m *MocktripRepository) UpdateIfActive(ctx context.Context, trip *model.Trip) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateIfActive", ctx, trip)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateIfActive indicates an expected call of UpdateIfActive.
+func (mr *MocktripRepositoryMockRecorder) UpdateIfActive(ctx, trip any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateIfActive", reflect.TypeOf((*MocktripRepository)(nil).UpdateIfActive), ctx, trip)
 }
 
 // MocktxManager is a mock of txManager interface.

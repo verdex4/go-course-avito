@@ -5,11 +5,12 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/google/uuid"
+
 	api "github.com/verdex4/go-course-avito/internal/generated"
 	"github.com/verdex4/go-course-avito/internal/http/domainerror"
-	"github.com/verdex4/go-course-avito/internal/usecase/trip/create"
-
 	"github.com/verdex4/go-course-avito/internal/model"
+	"github.com/verdex4/go-course-avito/internal/usecase/trip/create"
 )
 
 type Handler struct {
@@ -30,26 +31,43 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request, params api.Crea
 		return
 	}
 
-	in := create.Input{
-		UserID:     req.UserId,
-		DriverID:   req.DriverId,
-		StartPoint: model.Coordinates{Latitude: req.StartPoint.Latitude, Longitude: req.StartPoint.Longitude},
-		EndPoint:   model.Coordinates{Latitude: req.EndPoint.Latitude, Longitude: req.EndPoint.Longitude},
-		Price:      req.Price,
+	var idempotencyKey *uuid.UUID
+	if params.IdempotencyKey != nil {
+		key := *params.IdempotencyKey
+		idempotencyKey = &key
 	}
 
-	trip, err := h.uc.Execute(r.Context(), in)
+	in := create.Input{
+		IdempotencyKey: idempotencyKey,
+		UserID:         req.UserId,
+		DriverID:       req.DriverId,
+		StartPoint:     model.Coordinates{Latitude: req.StartPoint.Latitude, Longitude: req.StartPoint.Longitude},
+		EndPoint:       model.Coordinates{Latitude: req.EndPoint.Latitude, Longitude: req.EndPoint.Longitude},
+		Price:          req.Price,
+	}
+
+	trip, isNew, err := h.uc.Execute(r.Context(), in)
 	if err != nil {
 		status, body := domainerror.Problem(err)
 		writeProblem(w, status, body)
 		return
 	}
 
-	h.logger.Info("trip created", "trip_id", trip.ID.String())
+	if isNew {
+		h.logger.Info("trip created", "trip_id", trip.ID.String())
+	} else {
+		h.logger.Info("idempotent request, returning existing trip", "trip_id", trip.ID.String())
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Location", "/api/v1/trips/"+trip.ID.String())
-	w.WriteHeader(http.StatusCreated)
+
+	if isNew {
+		w.Header().Set("Location", "/api/v1/trips/"+trip.ID.String())
+		w.WriteHeader(http.StatusCreated)
+	} else {
+		w.WriteHeader(http.StatusOK)
+	}
+
 	_ = json.NewEncoder(w).Encode(toAPI(trip))
 }
 

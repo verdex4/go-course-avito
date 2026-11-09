@@ -10,7 +10,6 @@ import (
 
 	"github.com/exaring/otelpgx"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
@@ -37,7 +36,7 @@ type App struct {
 
 func New(cfg *config.Config) (*App, error) {
 	// Инициализация Telemetry
-	tel, err := telemetry.New(context.Background(), cfg.OtelEndpoint, cfg.OtelProtocol, cfg.OtelTracesSampler)
+	tel, err := telemetry.New(context.Background(), cfg.OtelEndpoint, cfg.OtelTracesSampler)
 	if err != nil {
 		return nil, fmt.Errorf("init telemetry: %w", err)
 	}
@@ -47,8 +46,8 @@ func New(cfg *config.Config) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse db config: %w", err)
 	}
-	poolConfig.MaxConns = int32(cfg.DatabaseMaxConns)
-	poolConfig.MinConns = int32(cfg.DatabaseMinConns)
+	poolConfig.MaxConns = cfg.DatabaseMaxConns
+	poolConfig.MinConns = cfg.DatabaseMinConns
 	poolConfig.MaxConnLifetime = cfg.DatabaseMaxConnLifetime
 	poolConfig.ConnConfig.Tracer = otelpgx.NewTracer()
 
@@ -81,7 +80,9 @@ func New(cfg *config.Config) (*App, error) {
 
 	// Сборка роутера
 	router := chi.NewRouter()
-	router.Use(middleware.Recoverer)
+	router.Use(httpMiddleware.Recover(tel.Logger))
+	router.Use(httpMiddleware.SetHTTPRoute)
+	router.Use(httpMiddleware.TrackActiveRequests(tel.Metrics.ActiveRequests))
 	router.Use(httpMiddleware.Logging(tel.Logger))
 
 	// Адаптер для OpenAPI

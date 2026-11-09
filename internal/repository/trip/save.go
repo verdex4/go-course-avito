@@ -6,13 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Masterminds/squirrel"
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/verdex4/go-course-avito/internal/domain/trip"
 	"github.com/verdex4/go-course-avito/internal/infra/postgres/transaction"
 	"github.com/verdex4/go-course-avito/internal/model"
-
-	"github.com/Masterminds/squirrel"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const pgUniqueViolation = "23505"
@@ -65,52 +64,39 @@ func (r *repo) Save(ctx context.Context, t *model.Trip) error {
 	return nil
 }
 
-func (r *repo) Finish(ctx context.Context, id uuid.UUID) (*model.Trip, error) {
+func (r *repo) UpdateIfActive(ctx context.Context, t *model.Trip) error {
 	exec := transaction.GetExecutor(ctx, r.pool)
-	now := time.Now().UTC()
 
 	updateQuery, args, err := r.sb.Update("trips").
-		Set("status", string(model.TripStatusCompleted)).
-		Set("finished_at", now).
-		Set("updated_at", now).
+		Set("status", string(t.Status)).
+		Set("finished_at", t.FinishedAt).
+		Set("updated_at", t.UpdatedAt).
 		Where(squirrel.And{
-			squirrel.Eq{"id": id},
+			squirrel.Eq{"id": t.ID},
 			squirrel.Eq{"status": string(model.TripStatusActive)},
 		}).
 		ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("build update trip: %w", err)
+		return fmt.Errorf("build update trip: %w", err)
 	}
 
 	tag, err := exec.Exec(ctx, updateQuery, args...)
 	if err != nil {
-		return nil, fmt.Errorf("update trip: %w", err)
+		return fmt.Errorf("update trip: %w", err)
 	}
 
 	if tag.RowsAffected() == 0 {
-		existing, err := r.Get(ctx, id)
+		existing, err := r.Get(ctx, t.ID)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if existing.Status == model.TripStatusCompleted {
-			return nil, trip.ErrTripCompleted
+			return trip.ErrTripCompleted
 		}
-		return nil, fmt.Errorf("unexpected state for trip %s", id)
+		return fmt.Errorf("unexpected state for trip %s", t.ID)
 	}
 
-	insertHistory, args, err := r.sb.Insert("trip_status_history").
-		Columns("trip_id", "from_status", "to_status", "reason", "changed_at").
-		Values(id, string(model.TripStatusActive), string(model.TripStatusCompleted), "trip finished", now).
-		ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("build insert history: %w", err)
-	}
-
-	if _, err := exec.Exec(ctx, insertHistory, args...); err != nil {
-		return nil, fmt.Errorf("insert history: %w", err)
-	}
-
-	return r.Get(ctx, id)
+	return nil
 }
 
 // wrapDBError превращает ошибки PostgreSQL в доменные.

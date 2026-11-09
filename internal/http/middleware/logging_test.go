@@ -3,17 +3,17 @@ package middleware
 import (
 	"bytes"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"log/slog"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLoggingMiddleware(t *testing.T) {
+	tripsPath := "/api/v1/trips"
 	tests := []struct {
 		name          string
 		requestPath   string
@@ -32,11 +32,11 @@ func TestLoggingMiddleware(t *testing.T) {
 		},
 		{
 			name:          "500 Internal Server Error triggers ERROR level",
-			requestPath:   "/api/v1/trips",
-			registerRoute: "/api/v1/trips",
+			requestPath:   tripsPath,
+			registerRoute: tripsPath,
 			handlerStatus: http.StatusInternalServerError,
 			expectedLevel: "ERROR",
-			expectedRoute: "/api/v1/trips",
+			expectedRoute: tripsPath,
 		},
 		{
 			name:          "404 Not Found (fallback to URL path)",

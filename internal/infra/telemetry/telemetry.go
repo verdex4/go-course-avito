@@ -28,11 +28,12 @@ type Telemetry struct {
 }
 
 type Metrics struct {
-	TripsCreated  metric.Int64Counter
-	TripsFinished metric.Int64Counter
+	TripsCreated   metric.Int64Counter
+	TripsFinished  metric.Int64Counter
+	ActiveRequests metric.Int64UpDownCounter
 }
 
-func New(ctx context.Context, endpoint, protocol, samplerStr string) (*Telemetry, error) {
+func New(ctx context.Context, endpoint, samplerStr string) (*Telemetry, error) {
 	res, err := sdkresource.New(ctx,
 		sdkresource.WithFromEnv(),
 		sdkresource.WithAttributes(
@@ -90,7 +91,12 @@ func New(ctx context.Context, endpoint, protocol, samplerStr string) (*Telemetry
 
 	meter := mp.Meter("trip-service")
 	tripsCreated, _ := meter.Int64Counter("tripgo.trips.created", metric.WithUnit("{trip}"), metric.WithDescription("Created trips"))
-	TripsFinished, _ := meter.Int64Counter("tripgo.trips.completed", metric.WithUnit("{trip}"), metric.WithDescription("Completed trips"))
+	tripsFinished, _ := meter.Int64Counter("tripgo.trips.completed", metric.WithUnit("{trip}"), metric.WithDescription("Completed trips"))
+	activeRequests, _ := meter.Int64UpDownCounter(
+		"http.server.active_requests",
+		metric.WithUnit("{request}"),
+		metric.WithDescription("Количество запросов, обрабатываемых прямо сейчас"),
+	)
 
 	level := slog.LevelInfo
 	logger := slog.New(&otelContextHandler{
@@ -102,8 +108,9 @@ func New(ctx context.Context, endpoint, protocol, samplerStr string) (*Telemetry
 		MeterProvider:  mp,
 		Logger:         logger,
 		Metrics: &Metrics{
-			TripsCreated:  tripsCreated,
-			TripsFinished: TripsFinished,
+			TripsCreated:   tripsCreated,
+			TripsFinished:  tripsFinished,
+			ActiveRequests: activeRequests,
 		},
 	}, nil
 }

@@ -43,12 +43,13 @@ func (m *MocktripUseCase) EXPECT() *MocktripUseCaseMockRecorder {
 }
 
 // Execute mocks base method.
-func (m *MocktripUseCase) Execute(ctx context.Context, in create.Input) (*model.Trip, error) {
+func (m *MocktripUseCase) Execute(ctx context.Context, in create.Input) (*model.Trip, bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Execute", ctx, in)
 	ret0, _ := ret[0].(*model.Trip)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // Execute indicates an expected call of Execute.

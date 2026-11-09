@@ -25,10 +25,10 @@ func main() {
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 
 	if err := app.Run(ctx); err != nil {
 		slog.Error("app run error", "error", err)
+		stop()
 		os.Exit(1)
 	}
 }

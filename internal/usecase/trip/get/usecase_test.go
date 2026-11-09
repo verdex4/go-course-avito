@@ -7,10 +7,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+
 	"github.com/verdex4/go-course-avito/internal/domain/trip"
 	"github.com/verdex4/go-course-avito/internal/model"
 	"github.com/verdex4/go-course-avito/internal/usecase/trip/get"
-	"go.uber.org/mock/gomock"
 )
 
 func TestUseCase_Execute(t *testing.T) {
