@@ -13,12 +13,14 @@ CREATE TABLE trips (
     finished_at     TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    idempotency_key UUID UNIQUE,
     CHECK (
         (status = 'active'    AND finished_at IS NULL) OR
         (status = 'completed' AND finished_at IS NOT NULL)
     )
 );
 
+CREATE INDEX idx_trips_idempotency_key ON trips (idempotency_key) WHERE idempotency_key IS NOT NULL;
 CREATE INDEX trips_status_started_at_idx ON trips (status, started_at);
 
 -- Ограничение: у одного водителя не может быть двух активных поездок
