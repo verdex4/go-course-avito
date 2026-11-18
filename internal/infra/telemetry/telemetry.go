@@ -25,12 +25,19 @@ type Telemetry struct {
 	MeterProvider  *sdkmetric.MeterProvider
 	Logger         *slog.Logger
 	Metrics        *Metrics
+	Meter          metric.Meter
 }
 
 type Metrics struct {
 	TripsCreated   metric.Int64Counter
 	TripsFinished  metric.Int64Counter
 	ActiveRequests metric.Int64UpDownCounter
+
+	PositionsSaved                metric.Int64Counter
+	StaleChecks                   metric.Int64Counter
+	PositionRequests              metric.Int64Counter
+	PositionRequestsDuration      metric.Float64Histogram
+	PositionRequestsWorkersActive metric.Int64UpDownCounter
 }
 
 func New(ctx context.Context, endpoint, samplerStr string) (*Telemetry, error) {
@@ -98,6 +105,12 @@ func New(ctx context.Context, endpoint, samplerStr string) (*Telemetry, error) {
 		metric.WithDescription("Количество запросов, обрабатываемых прямо сейчас"),
 	)
 
+	positionsSaved, _ := meter.Int64Counter("tripgo.positions.saved", metric.WithUnit("{position}"), metric.WithDescription("Saved trip positions"))
+	staleChecks, _ := meter.Int64Counter("tripgo.stale_checks", metric.WithUnit("{check}"), metric.WithDescription("Stale trip checks by scanner"))
+	positionRequests, _ := meter.Int64Counter("tripgo.position_requests", metric.WithUnit("{request}"), metric.WithDescription("Position request results"))
+	positionRequestsDuration, _ := meter.Float64Histogram("tripgo.position_requests.duration", metric.WithUnit("s"), metric.WithDescription("Push Service call duration"))
+	positionRequestsWorkersActive, _ := meter.Int64UpDownCounter("tripgo.position_requests.workers.active", metric.WithUnit("{worker}"), metric.WithDescription("Active position request workers"))
+
 	level := slog.LevelInfo
 	logger := slog.New(&otelContextHandler{
 		Handler: slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}),
@@ -107,10 +120,16 @@ func New(ctx context.Context, endpoint, samplerStr string) (*Telemetry, error) {
 		TracerProvider: tp,
 		MeterProvider:  mp,
 		Logger:         logger,
+		Meter:          meter,
 		Metrics: &Metrics{
-			TripsCreated:   tripsCreated,
-			TripsFinished:  tripsFinished,
-			ActiveRequests: activeRequests,
+			TripsCreated:                  tripsCreated,
+			TripsFinished:                 tripsFinished,
+			ActiveRequests:                activeRequests,
+			PositionsSaved:                positionsSaved,
+			StaleChecks:                   staleChecks,
+			PositionRequests:              positionRequests,
+			PositionRequestsDuration:      positionRequestsDuration,
+			PositionRequestsWorkersActive: positionRequestsWorkersActive,
 		},
 	}, nil
 }
@@ -121,6 +140,10 @@ func (m *Metrics) AddTripCreated(ctx context.Context, n int64) {
 
 func (m *Metrics) AddTripFinished(ctx context.Context, n int64) {
 	m.TripsFinished.Add(ctx, n)
+}
+
+func (m *Metrics) AddPositionSaved(ctx context.Context, n int64) {
+	m.PositionsSaved.Add(ctx, n)
 }
 
 type otelContextHandler struct {
