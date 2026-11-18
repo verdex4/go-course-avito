@@ -1,4 +1,4 @@
-include .env
+-include .env
 export $(shell test -f .env && sed 's/=.*//' .env)
 
 .PHONY: generate migrate migrate-down run test lint test test-integration
@@ -38,7 +38,7 @@ lint:
 # CGO_ENABLED=1 - включение race detector
 test:
 	@echo "Running tests..."
-	CGO_ENABLED=1 go test -race -cover ./internal/domain/... ./internal/usecase/... ./internal/http/...
+	CGO_ENABLED=1 go test -race -cover ./...
 
 # Запуск интеграционных тестов, требующих подключение к БД через tripgoctl
 # CGO_ENABLED=1 - включение race detector

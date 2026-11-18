@@ -1,4 +1,4 @@
-# Лабораторная работа 2
+# Лабораторная работа 3
 
 ## Зависимости
 
@@ -20,13 +20,13 @@ make run
 make lint
 ```
 
-Для запуска тестов
+Запуск тестов
 ```
 make test
-make integration-test
+make test-integration
 ```
 
-Для подключения к Jaeger и Grafana
+Подключение к Jaeger и Grafana
 ```
 tripgoctl connect
 ```
@@ -48,6 +48,30 @@ tripgoctl по умолчанию создает переменные окруж
 - OTEL_EXPORTER_OTLP_PROTOCOL
 - OTEL_RESOURCE_ATTRIBUTES
 - OTEL_TRACES_SAMPLER
+- POSITION_CHECK_INTERVAL
+- POSITION_STALE_AFTER
+- POSITION_WORKERS
+- POSITION_QUEUE_SIZE
+- PUSH_HTTP_URL
+- PUSH_REQUEST_TIMEOUT
+
+## Опрос устаревших поездок
+
+Схема работы:
+```
+сканер → очередь → воркеры → Push Service
+```
+
+Параметры конфигурации:
+- `POSITION_CHECK_INTERVAL` - интервал опроса устаревших поездок
+- `POSITION_STALE_AFTER` - период, после которого поездка считается устаревшей
+- `POSITION_WORKERS` - количество параллельных воркеров для обработки запросов
+- `POSITION_QUEUE_SIZE` - размер очереди запросов к Push Service
+- `PUSH_HTTP_URL` - адрес сервиса Push
+- `PUSH_REQUEST_TIMEOUT` - таймаут HTTP-запроса в Push Service
+
+Поведение при исчерпании очереди:
+Если очередь заполнена, новые задачи будут отбрасываться ("dropped").
 
 ## Схема слоев
 
@@ -69,36 +93,3 @@ internal/repository/trip     // работа с базой данных
 internal/infra/postgres      // пул соединений, менеджер транзакций
 internal/infra/telemetry     // OpenTelemetry, логгер
 ```
-
-## Зависимости
-
-Цепочка: транспорт → usecase → домен
-
-Домен не знает ни про HTTP, ни про базу данных.
-Интерфейсы (TripRepository, TxManager) объявлены на стороне потребителя - в пакете usecase, а не в repository. Это значит, что usecase сам говорит, что ему нужно, а реализация может быть любой.
-
-## Решения
-
-1. Обработка ошибок: все доменные ошибки объявлены в internal/domain/trip/errors.go. Маппинг "доменная ошибка: HTTP-ответ" сделан в одном месте - internal/http/domainerror/domainerror.go. Хендлеры не делают switch по ошибкам, они просто вызывают domainerror.Problem(err).
-Детали внутренних ошибок только логируются через slog.
-2. Тестирование: для usecase и http-хэндлеров написаны Unit-тесты, при помощи gomock (автогенерация моков для теста), что позволяет не обращается к реальной базе данных.
-Интеграционные тесты - уже с использованием БД, проверка корректности ее работы. Тесты домена и middleware без моков.
-3. Observability: otelhttp middleware создаёт корневой спан на каждый HTTP-запрос, otelpgx создаёт спаны на запросы к БД. Все спаны одного запроса имеют общий trace_id.
-Созданы кастомные счётчики tripgo.trips.created и tripgo.trips.completed, которые можно отследить в Jaeger и Grafana.
-
-## Скриншоты из Jaeger и Grafana
-
-Список трейсов:
-![](plots/jaeger_main.png)
-
-Таймлайн запроса на завершение поездки:
-![](plots/jaeger_finish_trace_timeline.png)
-
-Граф запроса на завершение поездки:
-![](plots/jaeger_finish_trace_graph.png)
-
-Кастомная метрика в Grafana trips_created_total:
-![](plots/grafana_trips_created_total.png)
-
-Кастомная метрика в Grafana trips_completed_total:
-![](plots/grafana_trips_completed_total.png)

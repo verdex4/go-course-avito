@@ -14,8 +14,8 @@ const (
 )
 
 type Coordinates struct {
-	Latitude  float64
-	Longitude float64
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
 }
 
 type Trip struct {
