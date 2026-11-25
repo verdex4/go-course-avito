@@ -13,6 +13,11 @@ type Config struct {
 	LogLevel        string
 	ShutdownTimeout time.Duration
 
+	HTTPReadTimeout       time.Duration
+	HTTPReadHeaderTimeout time.Duration
+	HTTPWriteTimeout      time.Duration
+	HTTPIdleTimeout       time.Duration
+
 	DatabaseMaxConns        int32
 	DatabaseMinConns        int32
 	DatabaseMaxConnLifetime time.Duration
@@ -22,10 +27,22 @@ type Config struct {
 	OtelEndpoint      string
 	OtelProtocol      string
 	OtelTracesSampler string
+
+	PositionCheckInterval time.Duration
+	PositionStaleAfter    time.Duration
+	PositionWorkers       int
+	PositionQueueSize     int
+	PushHTTPURL           string
+	PushRequestTimeout    time.Duration
 }
 
 func Load() (*Config, error) {
-	cfg := &Config{}
+	cfg := &Config{
+		HTTPReadTimeout:       10 * time.Second,
+		HTTPReadHeaderTimeout: 5 * time.Second,
+		HTTPWriteTimeout:      30 * time.Second,
+		HTTPIdleTimeout:       60 * time.Second,
+	}
 
 	httpAddr := os.Getenv("HTTP_ADDR")
 	if httpAddr == "" {
@@ -99,6 +116,42 @@ func Load() (*Config, error) {
 	}
 	cfg.OtelTracesSampler = otelTracesSampler
 
+	positionCheckInterval, err := parseDuration("POSITION_CHECK_INTERVAL", "30s")
+	if err != nil {
+		return nil, fmt.Errorf("invalid POSITION_CHECK_INTERVAL: %w", err)
+	}
+	cfg.PositionCheckInterval = positionCheckInterval
+
+	positionStaleAfter, err := parseDuration("POSITION_STALE_AFTER", "60s")
+	if err != nil {
+		return nil, fmt.Errorf("invalid POSITION_STALE_AFTER: %w", err)
+	}
+	cfg.PositionStaleAfter = positionStaleAfter
+
+	positionWorkers, err := parseInt("POSITION_WORKERS", 4)
+	if err != nil {
+		return nil, fmt.Errorf("invalid POSITION_WORKERS: %w", err)
+	}
+	cfg.PositionWorkers = positionWorkers
+
+	positionQueueSize, err := parseInt("POSITION_QUEUE_SIZE", 100)
+	if err != nil {
+		return nil, fmt.Errorf("invalid POSITION_QUEUE_SIZE: %w", err)
+	}
+	cfg.PositionQueueSize = positionQueueSize
+
+	pushHTTPURL := os.Getenv("PUSH_HTTP_URL")
+	if pushHTTPURL == "" {
+		return nil, fmt.Errorf("PUSH_HTTP_URL is required")
+	}
+	cfg.PushHTTPURL = pushHTTPURL
+
+	pushRequestTimeout, err := parseDuration("PUSH_REQUEST_TIMEOUT", "1s")
+	if err != nil {
+		return nil, fmt.Errorf("invalid PUSH_REQUEST_TIMEOUT: %w", err)
+	}
+	cfg.PushRequestTimeout = pushRequestTimeout
+
 	return cfg, nil
 }
 
@@ -121,4 +174,16 @@ func parseInt32(key string, defaultValue int32) (int32, error) {
 	}
 
 	return int32(res64), nil
+}
+
+func parseInt(key string, defaultValue int) (int, error) {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue, nil
+	}
+	res, err := strconv.Atoi(value)
+	if err != nil {
+		return defaultValue, err
+	}
+	return res, nil
 }
