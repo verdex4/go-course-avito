@@ -142,13 +142,12 @@ func TestPool_Deduplication(t *testing.T) {
 	cancel, done := startPool(pool)
 
 	ft.Tick()
-	time.Sleep(20 * time.Millisecond)
-	assert.Equal(t, int64(1), metrics.queued.Load())
-
 	<-workerStarted
 
 	ft.Tick()
-	time.Sleep(20 * time.Millisecond)
+	<-workerStarted
+
+	assert.Equal(t, int64(1), metrics.queued.Load())
 	assert.Equal(t, int64(1), metrics.duplicate.Load())
 
 	close(workerProceed)

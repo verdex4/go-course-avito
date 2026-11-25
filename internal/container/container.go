@@ -2,6 +2,7 @@ package container
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -121,7 +122,25 @@ func New(cfg *config.Config) (*App, error) {
 		listPosition: listPositionH,
 	}
 
-	api.HandlerFromMux(apiWrapper, router)
+	// Передаем опции, включая обработчик ошибок
+	api.HandlerWithOptions(apiWrapper, api.ChiServerOptions{
+		BaseRouter: router,
+		BaseURL:    "/api/v1",
+		ErrorHandlerFunc: func(rw http.ResponseWriter, r *http.Request, err error) {
+			rw.Header().Set("Content-Type", "application/problem+json")
+			rw.WriteHeader(http.StatusBadRequest)
+
+			detail := err.Error()
+			problem := api.Problem{
+				Type:   "about:blank",
+				Title:  "Bad Request",
+				Status: http.StatusBadRequest,
+				Detail: &detail,
+			}
+
+			_ = json.NewEncoder(rw).Encode(problem)
+		},
+	})
 
 	otelHandler := otelhttp.NewHandler(router, "trip-service",
 		otelhttp.WithSpanNameFormatter(func(operation string, r *http.Request) string {

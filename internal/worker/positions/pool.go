@@ -3,6 +3,7 @@ package positions
 import (
 	"context"
 	"log/slog"
+	"runtime"
 	"sync"
 	"time"
 
@@ -21,12 +22,6 @@ type Config struct {
 	Workers        int
 	QueueSize      int
 	RequestTimeout time.Duration
-}
-
-type task struct {
-	tripID   uuid.UUID
-	driverID uuid.UUID
-	spanLink trace.Link
 }
 
 type Pool struct {
@@ -102,6 +97,12 @@ func (p *Pool) Cancel(tripID uuid.UUID) {
 	p.mu.Lock()
 	delete(p.inQueue, tripID)
 	p.mu.Unlock()
+}
+
+type task struct {
+	tripID   uuid.UUID
+	driverID uuid.UUID
+	spanLink trace.Link
 }
 
 func (p *Pool) runScanner(ctx context.Context) {
@@ -187,6 +188,17 @@ func (p *Pool) tryEnqueue(ctx context.Context, t *model.Trip, scanSpan trace.Spa
 func (p *Pool) runWorker(ctx context.Context, id int) {
 	defer p.wg.Done()
 	p.logger.Debug("worker started", "worker_id", id)
+
+	defer func() {
+		if r := recover(); r != nil {
+			buf := make([]byte, 1024)
+			n := runtime.Stack(buf, false)
+			p.logger.Error("worker panicked",
+				"worker_id", id,
+				"panic", r,
+				"stack", string(buf[:n]))
+		}
+	}()
 
 	for tsk := range p.queue {
 		p.processTask(ctx, tsk)
